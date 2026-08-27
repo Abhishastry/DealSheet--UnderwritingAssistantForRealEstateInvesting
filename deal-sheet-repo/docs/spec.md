@@ -186,6 +186,27 @@ Land module needs different comp sources than standard resale/rental — flagged
 
 **STR (short-term rental) module — deferred to Phase 5.** Needs occupancy/ADR comp data (e.g. AirDNA) and a per-city/county STR legality lookup, neither sourced yet. Isolating it keeps the four core models moving without blocking on unresolved data dependencies.
 
+### 4a. Fix & Flip — Property Qualification (Phase 1, in progress)
+
+Two qualification signals feed into `deal_reasoning[]` and, for fixer tier, into `condition.rehab_estimate`. **Not yet specified**: the full financial formula chain (target ROI threshold, selling-cost %, holding costs, ARV sourcing, the `recommended_offer` backward-solve) — that's separate, still-open work, tracked in Section 9.
+
+**Fixer tier classification.** Two-step pipeline: an LLM extraction step reads `condition.photos[]` + `condition.notes` (description text) + `listing.build_year`, and outputs structured per-item findings — each of the "core 5" (foundation, plumbing, electric, roof, structure) as `sound` / `damaged` / `unknown`, plus `floor_plan_change_needed`, `pool_or_fence_work`, `remodel_mentioned` booleans. A **deterministic function** (not an LLM judgment call, so the same inputs always yield the same tier) then maps that structured output to one of four tiers:
+
+| Tier | Core 5 rule | Other signals |
+|---|---|---|
+| **Light fixer** | All 5 `sound` (no `damaged` or `unknown`) | Pre-~1994, no remodel mentioned, dated photos (color scheme, popcorn ceiling, old countertops) — purely cosmetic |
+| **Medium fixer** | 3–4 of 5 `sound`, the rest `damaged` (not `unknown`) | Floor plan changes needed; significant backyard/fence/pool work |
+| **Full/deep fixer** | ≤2 of 5 `sound` — **and any `unknown` core-5 item counts as `damaged` for this rule, not as a pass.** We don't yet distinguish "confirmed bad" from "no info either way"; both are treated conservatively as deep-fixer risk rather than under-flagging a property we simply lack data on. | Evidence of serious damage (flood, fire) to multiple core items |
+| **Full build** | Foundation gone, or no structure exists | Ground-up build, not a rehab |
+
+**Confirmed limitation**: this classifier needs photos and description text. RentCast's `/listings/sale` has neither (confirmed via the field audit, Section 2) — so it can only run on wholesaler-sourced deals for now. RentCast-sourced properties (already flagged `no_condition_data`) get no fixer tier and no `rehab_estimate` from this path until that data gap is resolved some other way.
+
+**Connects to the financial formulas**: once a tier is assigned, it can drive a rough `condition.rehab_estimate` via a $/sqft multiplier per tier (e.g. light/medium/deep/full-build each get their own rate × `listing.sqft`) for deals where the wholesaler didn't give a precise number — closing the loop back to what the fix & flip module's `recommended_offer` math needs. Exact $/sqft rates per tier: not yet set — needs real Austin-market rehab cost data, tracked in Section 9.
+
+**Neighborhood pricing signal.** "Neighborhood" is operationalized as a **radius around the property** (default 0.4mi, matching the existing comp example already in the design mock — `design/deal-feed-mock.html`'s "3 comparable flips within 0.4mi") rather than zip code (too coarse/heterogeneous for Austin) or a true neighborhood-boundary dataset (no such data source in the current stack). Computed directly from `address.lat`/`.lng` against other properties in the database — no new external data dependency.
+
+This is a **scored signal, not a pass/fail threshold**: compute `% below neighborhood average price` as a continuous number (comparing the subject property's `listing.ask_price` against the average `listing.ask_price` of comparable properties — similar `propertyType`/sqft range — within the radius) and feed it into a `deal_reasoning` entry (`method: "neighborhood_analysis"`) rather than gating on a fixed cutoff like "must be ≥15% below average." Confidence tier: `verified` if enough comps exist within the radius to trust the average, `likely`/`unconfirmed` if the comp set is thin. Exact comp-count floor for "verified": not yet set, tracked in Section 9.
+
 ---
 
 ## 5. Interface Layer
@@ -308,6 +329,9 @@ Priority: free/cheap to stand up and pilot, but credible enough to share with re
 - [ ] Comp data source for land/recreational module
 - [ ] STR legality lookup by city/county (varies significantly across the Austin metro) — deferred to Phase 5
 - [ ] "Run underwriting" scope: auto-run all applicable strategies for a property, or prompt user to pick one first? (Section 5b)
+- [ ] **Fix & flip's financial formula chain — still fully open** (Section 4a notes this explicitly): target ROI/margin threshold (fixed % or per-deal/user-configurable?), where ARV comes from when not directly given (wholesaler claim tagged unverified? RentCast `/avm/value`? manual entry?), selling-cost % assumption, holding-cost components (tax/insurance/utilities/financing during rehab), how "opportunity cost of cash" is computed, and the `recommended_offer` backward-solve itself. Grounding candidate: the user's own prior "Angel Valley" deal, referenced throughout this doc as the model to mirror — get its real numbers as the test case, same role Snow Ln played for the schema.
+- [ ] Fixer-tier rehab cost: exact $/sqft multiplier per tier (light/medium/deep/full-build) — needs real Austin-market rehab cost data, not a guess (Section 4a).
+- [ ] Neighborhood pricing signal: exact comp-count floor within the 0.4mi radius for a `verified` confidence tier vs. `likely`/`unconfirmed` (Section 4a).
 - [x] ~~RentCast field-level audit for `/listings/sale`~~ — confirmed 2026-08-27, see Section 2's "Confirmed field mapping" table. **Resolved:** photos/description are NOT available on this endpoint — RentCast-sourced deals cannot get `rehab_estimate` from listing data alone (see next item). **Still open below:** `/avm/value` and the property-records endpoint are not yet audited — only `/listings/sale` has been checked so far.
 - [ ] **RentCast-sourced deals have no rehab estimate.** Confirmed gap, not hypothetical: `/listings/sale` has no photos or description text, so fix & flip's `rehab_estimate` input can't be derived the way it is for wholesaler deals. Decide: skip fix & flip underwriting for RentCast-only properties (show them in All Listings, unprocessed) vs. a rough $/sqft rehab heuristic (flagged low-confidence).
 - [ ] `/avm/value` and the property-records endpoint still need their own field audit (not yet spent) — in particular whether true last-sold price/date (for `verification.tax_history`) is separate from `/listings/sale`'s `history` field (which turned out to be listing/price-change history, not confirmed closing-sale history) or from `/avm/value`'s comparables.
