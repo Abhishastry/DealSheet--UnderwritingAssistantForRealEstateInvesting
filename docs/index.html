@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deal Feed — Mock v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --stone: #E7E4DA;
+    --card: #F6F4EC;
+    --card-border: #D8D3C4;
+    --ink: #232A24;
+    --ink-soft: #5B6259;
+    --cedar: #33473A;
+    --cedar-deep: #24332A;
+    --brass: #96702F;
+    --rust: #A2532F;
+    --rust-soft: #F2E2D6;
+    --rule: #CFC9B8;
+    --good: #4C8A5E;
+    --bad: #B3543A;
+    --radius: 3px;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    margin: 0;
+    background: var(--stone);
+    color: var(--ink);
+    font-family: 'Inter', -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+
+  /* Masthead */
+  .masthead {
+    background: var(--cedar-deep);
+    color: #EDEBE1;
+    padding: 12px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .masthead-brand { display: flex; align-items: center; gap: 9px; }
+  .masthead-mark {
+    width: 28px; height: 28px;
+    border: 1.5px solid #EDEBE1; border-radius: 3px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transform: rotate(-2deg); background: rgba(255,255,255,0.03);
+  }
+  .masthead-name { font-family: 'Fraunces', serif; font-weight: 600; font-size: 16px; letter-spacing: -0.01em; line-height: 1.1; }
+  .masthead-name span {
+    display: block; font-family: 'IBM Plex Mono', monospace; font-weight: 500;
+    font-size: 9px; letter-spacing: 0.01em; text-transform: none;
+    color: #A9B3A5; margin-top: 2px; max-width: 200px; line-height: 1.3;
+  }
+  .masthead-nav { font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.03em; color: #C7CDC1; }
+
+  /* Browse-all CTA — earned after the curated feed, not a peer nav item */
+  .browse-all-cta {
+    text-align: center;
+    padding: 22px 20px 8px;
+    border-top: 1px dashed var(--rule);
+    margin-top: 6px;
+  }
+  .browse-all-cta p {
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin: 0 0 12px;
+  }
+  .browse-all-cta button {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: #EDEBE1;
+    background: var(--cedar-deep);
+    border: none;
+    border-radius: 999px;
+    padding: 11px 22px;
+    cursor: pointer;
+  }
+
+  .back-to-feed-btn {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--ink-soft);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0 0 14px;
+    display: block;
+  }
+
+  .view-panel { display: none; }
+  .view-panel.active { display: block; }
+
+  /* Full listings view */
+  .listings-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .listing-row {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+  }
+  .listing-row-main { min-width: 0; }
+  .listing-row .lr-address {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 14.5px;
+    margin: 0 0 2px;
+  }
+  .listing-row .lr-meta {
+    font-size: 11.5px;
+    color: var(--ink-soft);
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .lr-status {
+    flex-shrink: 0;
+    text-align: right;
+  }
+  .lr-status-tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 999px;
+    white-space: nowrap;
+    display: inline-block;
+  }
+  .lr-status-tag.done { background: #E3E9E1; color: var(--cedar-deep); }
+  .lr-status-tag.flagged { background: var(--rust-soft); color: var(--rust); }
+  .lr-run-btn {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    font-weight: 600;
+    padding: 5px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--cedar);
+    background: transparent;
+    color: var(--cedar-deep);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .topbar {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--stone); border-bottom: 1px solid var(--rule);
+    padding: 18px 20px 14px;
+  }
+  .topbar-eyebrow {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--ink-soft); margin: 0 0 4px;
+  }
+  .topbar h1 { font-family: 'Fraunces', serif; font-weight: 600; font-size: 26px; letter-spacing: -0.01em; margin: 0; line-height: 1.15; }
+  .topbar-meta { margin-top: 8px; font-size: 13px; color: var(--ink-soft); display: flex; align-items: center; gap: 8px; }
+  .topbar-meta .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--cedar); display: inline-block; }
+
+  main { max-width: 640px; margin: 0 auto; padding: 16px 14px 10px; }
+  .feed { display: flex; flex-direction: column; gap: 12px; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--card-border);
+    border-radius: var(--radius); padding: 16px 16px 14px;
+    position: relative; overflow: hidden;
+  }
+  .card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--cedar); }
+  .card.unverified::before { background: var(--rust); }
+
+  .card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+  .stamp {
+    display: inline-flex; align-items: center; font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase;
+    color: var(--cedar-deep); border: 1.5px solid var(--cedar); border-radius: 2px;
+    padding: 3px 7px; transform: rotate(-1.2deg); white-space: nowrap;
+  }
+  .stamp.rental { color: var(--brass); border-color: var(--brass); transform: rotate(0.8deg); }
+  .stamp.land { color: #4A5A6B; border-color: #4A5A6B; transform: rotate(-0.6deg); }
+
+  .verified-pill {
+    font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 500;
+    letter-spacing: 0.04em; padding: 3px 8px; border-radius: 999px; white-space: nowrap;
+  }
+  .verified-pill.verified { background: #E3E9E1; color: var(--cedar-deep); }
+  .verified-pill.unverified { background: var(--rust-soft); color: var(--rust); }
+
+  .address { font-family: 'Fraunces', serif; font-weight: 600; font-size: 18px; line-height: 1.25; margin: 0 0 2px; }
+  .subaddress { font-size: 13px; color: var(--ink-soft); margin: 0 0 14px; }
+
+  /* Negotiation scale — 3 price points */
+  .scale-metric-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin: 0 0 8px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .scale-metric-label::before {
+    content: "";
+    width: 8px; height: 1px;
+    background: var(--ink-soft);
+    display: inline-block;
+  }
+
+  .price-scale { margin-bottom: 14px; }
+
+  .scale-track { position: relative; height: 16px; margin: 0 4px 10px; }
+  .scale-line {
+    position: absolute; top: 50%; left: 0; right: 0; height: 2px;
+    background: linear-gradient(to right, var(--good), var(--card-border) 55%, var(--card-border));
+    transform: translateY(-50%); border-radius: 2px;
+  }
+  .scale-dot {
+    position: absolute; top: 50%; width: 10px; height: 10px; border-radius: 50%;
+    background: var(--cedar-deep); border: 2px solid var(--card); transform: translate(-50%, -50%);
+  }
+  .scale-dot.mid { width: 12px; height: 12px; background: var(--brass); }
+  .scale-dot.list { background: var(--ink-soft); }
+
+  .scale-points { display: flex; }
+  .scale-point { flex: 1; text-align: center; padding: 0 4px; }
+  .scale-point:not(:last-child) { border-right: 1px dashed var(--rule); }
+
+  .scale-point .sp-label {
+    font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 0.05em;
+    text-transform: uppercase; color: var(--ink-soft); margin-bottom: 3px;
+    display: flex; align-items: center; justify-content: center; gap: 4px;
+  }
+  .scale-point.mid .sp-label { color: var(--brass); }
+
+  .edit-tag {
+    font-size: 8px; background: var(--rust-soft); color: var(--brass);
+    padding: 1px 4px; border-radius: 999px; letter-spacing: 0.02em; text-transform: none;
+  }
+
+  .scale-point .sp-price {
+    font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: 15px;
+    color: var(--ink); line-height: 1.2;
+  }
+  .scale-point .sp-roi { font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; margin-top: 2px; }
+  .scale-point .sp-roi.good { color: var(--good); }
+  .scale-point .sp-roi.bad { color: var(--bad); }
+
+  .scale-hint { font-size: 10.5px; color: var(--ink-soft); text-align: center; margin-top: 8px; font-style: italic; }
+
+  .scale-points.two .scale-point { flex: 0 1 auto; min-width: 90px; }
+  .scale-points.two { justify-content: space-between; }
+
+  .why-flag {
+    background: #EFEADA;
+    border-left: 2px solid var(--brass);
+    border-radius: 0 2px 2px 0;
+    padding: 9px 10px 10px;
+    margin-bottom: 10px;
+  }
+  .wf-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 5px;
+  }
+  .wf-method {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.03em;
+    color: var(--ink-soft);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .wf-confidence {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .wf-confidence.verified { background: #DCE7DA; color: var(--cedar-deep); }
+  .wf-confidence.likely { background: #F0E4C8; color: #8A6516; }
+  .wf-confidence.unconfirmed { background: var(--rust-soft); color: var(--rust); }
+
+  .wf-text {
+    font-size: 12.5px;
+    line-height: 1.4;
+    color: var(--ink);
+    margin: 0;
+  }
+
+  .why-flag.secondary {
+    margin-top: -2px;
+    background: #EAEDE4;
+    border-left-color: var(--cedar);
+  }
+
+  .log-offer-btn {
+    display: block;
+    margin: 8px auto 0;
+    background: none;
+    border: 1px dashed var(--card-border);
+    border-radius: 999px;
+    color: var(--ink-soft);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    padding: 5px 12px;
+    cursor: pointer;
+  }
+  .log-offer-btn:hover { border-color: var(--cedar); color: var(--cedar-deep); }
+
+  .facts-row {
+    display: flex; gap: 14px; flex-wrap: wrap; font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px; color: var(--ink-soft); padding-bottom: 12px; margin-bottom: 12px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .facts-row span { white-space: nowrap; }
+
+  .card-footer { display: flex; justify-content: space-between; align-items: center; }
+  .source-tag { font-size: 12px; color: var(--ink-soft); }
+  .source-tag strong { color: var(--ink); font-weight: 500; }
+
+  .expand-btn {
+    font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 600; color: var(--cedar-deep);
+    background: none; border: none; padding: 4px 0 4px 14px; cursor: pointer;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .expand-btn svg { width: 10px; height: 10px; transition: transform 0.2s ease; }
+  .card.open .expand-btn svg { transform: rotate(180deg); }
+
+  .breakdown { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+  .card.open .breakdown { max-height: 900px; }
+
+  /* Underwriting summary — dark panel, Angel Valley style */
+  .uw-summary {
+    margin-top: 14px; background: var(--cedar-deep); border-radius: 4px;
+    padding: 16px 15px; color: #EDEBE1;
+  }
+  .uw-title {
+    font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: #9CA895; margin-bottom: 12px;
+  }
+  .uw-row {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 13px; padding: 6px 0; color: #C7CDC1;
+  }
+  .uw-row .v { font-family: 'IBM Plex Mono', monospace; font-weight: 500; color: #EDEBE1; }
+  .uw-row.bold { color: #EDEBE1; font-weight: 600; }
+  .uw-row.bold .v { font-size: 14px; }
+  .uw-row.divider { border-top: 1px solid #3C4A40; margin-top: 6px; padding-top: 12px; }
+  .uw-row.neg .v { color: #D19077; }
+
+  .uw-footer {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    margin-top: 14px; padding-top: 14px; border-top: 1px solid #3C4A40;
+  }
+  .uw-foot-stat .p-label {
+    font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; letter-spacing: 0.06em;
+    text-transform: uppercase; color: #9CA895; margin-bottom: 4px;
+  }
+  .uw-foot-stat .p-value { font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: 17px; color: #EDEBE1; }
+  .uw-foot-stat.roi { background: #33473A; border-radius: 3px; padding: 8px 10px; margin: -8px -10px 0 0; }
+  .uw-foot-stat.roi .p-value { color: #9FC4AB; }
+
+  .note {
+    margin-top: 12px; font-size: 12px; color: var(--rust); background: var(--rust-soft);
+    padding: 8px 10px; border-radius: 2px; line-height: 1.4;
+  }
+
+  .site-footer { border-top: 1px solid var(--rule); margin-top: 24px; padding: 28px 20px 24px; background: var(--stone); }
+  .site-footer-inner { max-width: 640px; margin: 0 auto; }
+  .site-footer-brand { font-family: 'Fraunces', serif; font-weight: 600; font-size: 15px; margin-bottom: 6px; }
+  .site-footer-tagline { font-size: 12.5px; color: var(--ink-soft); line-height: 1.5; max-width: 46ch; margin-bottom: 16px; }
+  .site-footer-links {
+    display: flex; gap: 16px; font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    color: var(--ink-soft); padding-bottom: 16px; margin-bottom: 16px;
+    border-bottom: 1px solid var(--rule); flex-wrap: wrap;
+  }
+  .site-footer-links a { color: var(--cedar-deep); text-decoration: none; }
+  .site-footer-legal { font-size: 10.5px; color: var(--ink-soft); line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div class="masthead-brand">
+    <div class="masthead-mark">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none">
+        <path d="M6 3H15L19 7V21H6V3Z" stroke="#EDEBE1" stroke-width="1.5" stroke-linejoin="round"/>
+        <path d="M15 3V7H19" stroke="#EDEBE1" stroke-width="1.5" stroke-linejoin="round"/>
+        <path d="M9 13L11.3 15.3L16 10.5" stroke="#9FC4AB" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div class="masthead-name">Deal Sheet<span>Underwriting assistant for Austin investors</span></div>
+  </div>
+  <div class="masthead-nav">☰</div>
+</div>
+
+<div class="topbar">
+  <p class="topbar-eyebrow">Deal Sheet — Mock v2</p>
+  <h1>Worth a look today</h1>
+  <div class="topbar-meta"><span class="dot"></span> 3 deals cleared underwriting</div>
+</div>
+
+<main>
+  <div id="view-feed" class="view-panel active">
+  <div class="feed">
+
+    <!-- Card 1: Fix & Flip -->
+
+    <div class="card unverified">
+      <div class="card-head">
+        <span class="stamp">Fix &amp; Flip</span>
+        <span class="verified-pill unverified">Unverified</span>
+      </div>
+      <p class="address">12913 Snow Ln</p>
+      <p class="subaddress">Manor, TX 78653 · 3 bd / 2 ba · Built 2013</p>
+
+      <div class="why-flag">
+        <div class="wf-head">
+          <span class="wf-method">◆ Photos + wholesaler notes</span>
+          <span class="wf-confidence likely">Likely</span>
+        </div>
+        <p class="wf-text">Rehab scope reads as mostly cosmetic — paint, flooring, fixtures. Flyer photos show an intact roofline and no visible structural damage. Not a substitute for an in-person inspection.</p>
+      </div>
+      <div class="why-flag secondary">
+        <div class="wf-head">
+          <span class="wf-method">◆ County records</span>
+          <span class="wf-confidence verified">Verified</span>
+        </div>
+        <p class="wf-text">3 comparable flips within 0.4mi sold in the last 90 days, supporting the ARV estimate above.</p>
+      </div>
+
+      <div class="price-scale">
+        <p class="scale-metric-label">Annualized ROI at each price</p>
+        <div class="scale-track">
+          <div class="scale-line"></div>
+          <div class="scale-dot" style="left:8%"></div>
+          <div class="scale-dot list" style="left:92%"></div>
+        </div>
+        <div class="scale-points two">
+          <div class="scale-point">
+            <div class="sp-label">Recommended</div>
+            <div class="sp-price">$138.5K</div>
+            <div class="sp-roi good">31.8%</div>
+          </div>
+          <div class="scale-point">
+            <div class="sp-label">List price</div>
+            <div class="sp-price">$155.0K</div>
+            <div class="sp-roi good">22.4%</div>
+          </div>
+        </div>
+        <button class="log-offer-btn">+ Log an offer</button>
+      </div>
+
+      <div class="facts-row">
+        <span>6-month hold assumed</span>
+      </div>
+
+      <div class="card-footer">
+        <span class="source-tag"><strong>Wave Realty</strong> · Aug 17</span>
+        <button class="expand-btn" onclick="this.closest('.card').classList.toggle('open')">
+          Underwriting summary
+          <svg viewBox="0 0 10 6" fill="none"><path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+
+      <div class="breakdown">
+        <div class="uw-summary">
+          <p class="uw-title">Underwriting Summary — at recommended offer</p>
+          <div class="uw-row"><span>Sale price (ARV)</span><span class="v">$268,000</span></div>
+          <div class="uw-row neg"><span>Selling costs</span><span class="v">-$16,300</span></div>
+          <div class="uw-row bold"><span>Net sale proceeds</span><span class="v">$251,700</span></div>
+          <div class="uw-row neg"><span>Total project costs</span><span class="v">-$199,600</span></div>
+          <div class="uw-row bold divider"><span>Gross deal profit</span><span class="v">$52,100</span></div>
+          <div class="uw-row"><span>Opportunity cost of cash</span><span class="v">-$4,850</span></div>
+          <div class="uw-row bold"><span>True net profit</span><span class="v">$47,250</span></div>
+          <div class="uw-footer">
+            <div class="uw-foot-stat">
+              <div class="p-label">Cash deployed</div>
+              <div class="p-value">$148,900</div>
+            </div>
+            <div class="uw-foot-stat roi">
+              <div class="p-label">Annualized ROI</div>
+              <div class="p-value">31.8%</div>
+            </div>
+          </div>
+        </div>
+        <div class="note">ARV and condition notes are wholesaler-provided and not yet cross-checked against county records.</div>
+      </div>
+    </div>
+
+    <!-- Card 2: Buy & Hold -->
+    <div class="card">
+      <div class="card-head">
+        <span class="stamp rental">Buy &amp; Hold</span>
+        <span class="verified-pill verified">County-verified</span>
+      </div>
+      <p class="address">4417 Copperfield Dr</p>
+      <p class="subaddress">Pflugerville, TX 78660 · 4 bd / 2.5 ba · Built 2006</p>
+
+      <div class="why-flag">
+        <div class="wf-head">
+          <span class="wf-method">◆ Listing description</span>
+          <span class="wf-confidence unconfirmed">Unconfirmed</span>
+        </div>
+        <p class="wf-text">Listing mentions an assumable VA loan around 3.25%. Assumability terms and the seller's remaining equity aren't confirmed — a large equity gap could make this impractical. Cash-on-cash above assumes new financing; confirm with the listing agent before counting on the assumption.</p>
+      </div>
+
+      <div class="price-scale">
+        <p class="scale-metric-label">Cash-on-cash return at each price</p>
+        <div class="scale-track">
+          <div class="scale-line"></div>
+          <div class="scale-dot" style="left:8%"></div>
+          <div class="scale-dot list" style="left:92%"></div>
+        </div>
+        <div class="scale-points two">
+          <div class="scale-point">
+            <div class="sp-label">Recommended</div>
+            <div class="sp-price">$297.0K</div>
+            <div class="sp-roi good">10.6%</div>
+          </div>
+          <div class="scale-point">
+            <div class="sp-label">List price</div>
+            <div class="sp-price">$312.5K</div>
+            <div class="sp-roi good">9.4%</div>
+          </div>
+        </div>
+        <button class="log-offer-btn">+ Log an offer</button>
+      </div>
+      </div>
+
+      <div class="facts-row">
+        <span>20% down · 30-yr fixed assumed</span>
+      </div>
+
+      <div class="card-footer">
+        <span class="source-tag"><strong>Public listing</strong></span>
+        <button class="expand-btn" onclick="this.closest('.card').classList.toggle('open')">
+          Underwriting summary
+          <svg viewBox="0 0 10 6" fill="none"><path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+
+      <div class="breakdown">
+        <div class="uw-summary">
+          <p class="uw-title">Underwriting Summary — at recommended offer</p>
+          <div class="uw-row"><span>Est. monthly rent</span><span class="v">$2,450</span></div>
+          <div class="uw-row neg"><span>Mortgage + taxes + insurance</span><span class="v">-$1,780</span></div>
+          <div class="uw-row neg"><span>Maintenance + vacancy reserve</span><span class="v">-$245</span></div>
+          <div class="uw-row bold divider"><span>Monthly cash flow</span><span class="v">$425</span></div>
+          <div class="uw-row bold"><span>Annual cash flow</span><span class="v">$5,100</span></div>
+          <div class="uw-footer">
+            <div class="uw-foot-stat">
+              <div class="p-label">Cash deployed</div>
+              <div class="p-value">$68,600</div>
+            </div>
+            <div class="uw-foot-stat roi">
+              <div class="p-label">Cash-on-cash return</div>
+              <div class="p-value">10.6%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 3: Land -->
+    <div class="card unverified">
+      <div class="card-head">
+        <span class="stamp land">Land / Rec</span>
+        <span class="verified-pill unverified">Unverified</span>
+      </div>
+      <p class="address">County Rd 138</p>
+      <p class="subaddress">Hutto, TX 78634 · 8.2 acres · Unrestricted</p>
+
+      <div class="why-flag">
+        <div class="wf-head">
+          <span class="wf-method">◆ Wholesaler conversation</span>
+          <span class="wf-confidence unconfirmed">Unconfirmed</span>
+        </div>
+        <p class="wf-text">Wholesaler says the seller wants a fast, cash close after a prior deal fell through — secondhand, not confirmed directly with the seller. If accurate, likely means less competition from financed buyers than the price alone suggests.</p>
+      </div>
+
+      <div class="price-scale">
+        <p class="scale-metric-label">Annualized ROI at each price</p>
+        <div class="scale-track">
+          <div class="scale-line" style="background: linear-gradient(to right, var(--good), var(--good) 40%, var(--bad) 75%, var(--bad));"></div>
+          <div class="scale-dot" style="left:8%"></div>
+          <div class="scale-dot mid" style="left:44%"></div>
+          <div class="scale-dot list" style="left:92%"></div>
+        </div>
+        <div class="scale-points">
+          <div class="scale-point">
+            <div class="sp-label">Recommended</div>
+            <div class="sp-price">$171.0K</div>
+            <div class="sp-roi good">14.2%</div>
+          </div>
+          <div class="scale-point mid">
+            <div class="sp-label">Seller countered <span class="edit-tag">from text</span></div>
+            <div class="sp-price">$179.0K</div>
+            <div class="sp-roi bad">9.8%</div>
+          </div>
+          <div class="scale-point">
+            <div class="sp-label">List price</div>
+            <div class="sp-price">$189.0K</div>
+            <div class="sp-roi bad">6.1%</div>
+          </div>
+        </div>
+        <p class="scale-hint">Wholesaler texted a counter Aug 24 — this one weakens fast above $175K</p>
+      </div>
+
+      <div class="facts-row">
+        <span>18-month hold assumed</span>
+      </div>
+
+      <div class="card-footer">
+        <span class="source-tag"><strong>Wave Realty</strong> · Aug 21</span>
+        <button class="expand-btn" onclick="this.closest('.card').classList.toggle('open')">
+          Underwriting summary
+          <svg viewBox="0 0 10 6" fill="none"><path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+
+      <div class="breakdown">
+        <div class="uw-summary">
+          <p class="uw-title">Underwriting Summary — at recommended offer</p>
+          <div class="uw-row"><span>Comparable parcel value</span><span class="v">$278,000</span></div>
+          <div class="uw-row neg"><span>Est. utility hookup</span><span class="v">-$28,000</span></div>
+          <div class="uw-row neg"><span>Selling / closing costs</span><span class="v">-$9,300</span></div>
+          <div class="uw-row bold divider"><span>Gross deal profit</span><span class="v">$69,700</span></div>
+          <div class="uw-row"><span>Opportunity cost of cash</span><span class="v">-$5,100</span></div>
+          <div class="uw-row bold"><span>True net profit</span><span class="v">$64,600</span></div>
+          <div class="uw-footer">
+            <div class="uw-foot-stat">
+              <div class="p-label">Cash deployed</div>
+              <div class="p-value">$171,000</div>
+            </div>
+            <div class="uw-foot-stat roi">
+              <div class="p-label">Annualized ROI</div>
+              <div class="p-value">14.2%</div>
+            </div>
+          </div>
+        </div>
+        <div class="note">Zoning and utility access are estimates — not yet confirmed with county records.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="browse-all-cta">
+    <p>That's everything that cleared underwriting this week.</p>
+    <button onclick="switchView('listings')">Browse everything we're tracking →</button>
+  </div>
+
+  </div>
+
+  <div id="view-listings" class="view-panel">
+    <button class="back-to-feed-btn" onclick="switchView('feed')">← Back to recommendations</button>
+    <p class="topbar-meta" style="margin: 0 0 14px;">Everything sourced this week — underwritten and not yet reviewed</p>
+    <div class="listings-list">
+
+      <div class="listing-row">
+        <div class="listing-row-main">
+          <p class="lr-address">12913 Snow Ln</p>
+          <p class="lr-meta"><span>$155,000</span><span>·</span><span>Wave Realty</span></p>
+        </div>
+        <div class="lr-status">
+          <span class="lr-status-tag done">Underwritten ✓</span>
+        </div>
+      </div>
+
+      <div class="listing-row">
+        <div class="listing-row-main">
+          <p class="lr-address">4417 Copperfield Dr</p>
+          <p class="lr-meta"><span>$312,500</span><span>·</span><span>Public listing</span></p>
+        </div>
+        <div class="lr-status">
+          <span class="lr-status-tag done">Underwritten ✓</span>
+        </div>
+      </div>
+
+      <div class="listing-row">
+        <div class="listing-row-main">
+          <p class="lr-address">County Rd 138</p>
+          <p class="lr-meta"><span>$189,000</span><span>·</span><span>Wave Realty</span></p>
+        </div>
+        <div class="lr-status">
+          <span class="lr-status-tag done">Underwritten ✓</span>
+        </div>
+      </div>
+
+      <div class="listing-row">
+        <div class="listing-row-main">
+          <p class="lr-address">2210 Rosewood Ave</p>
+          <p class="lr-meta"><span>$418,000</span><span>·</span><span>Public listing</span><span>·</span><span>Austin 78702</span></p>
+        </div>
+        <div class="lr-status">
+          <button class="lr-run-btn">Run underwriting</button>
+        </div>
+      </div>
+
+      <div class="listing-row">
+        <div class="listing-row-main">
+          <p class="lr-address">908 Elmwood Dr</p>
+          <p class="lr-meta"><span>$276,900</span><span>·</span><span>Public listing</span><span>·</span><span>Round Rock 78664</span></p>
+        </div>
+        <div class="lr-status">
+          <button class="lr-run-btn">Run underwriting</button>
+        </div>
+      </div>
+
+      <div class="listing-row">
+        <div class="listing-row-main">
+          <p class="lr-address">15 Blue Bonnet Ln</p>
+          <p class="lr-meta"><span>Wave Realty</span><span>·</span><span>Leander</span></p>
+        </div>
+        <div class="lr-status">
+          <span class="lr-status-tag flagged">Incomplete — review</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<script>
+  function switchView(view) {
+    document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('view-' + view).classList.add('active');
+    window.scrollTo(0, 0);
+  }
+</script>
+
+<footer class="site-footer">
+  <div class="site-footer-inner">
+    <p class="site-footer-brand">Deal Sheet</p>
+    <p class="site-footer-tagline">Deals from your inbox and the open market, underwritten the moment they land. Fix &amp; flip, buy &amp; hold, land, and more — one feed, real math.</p>
+    <div class="site-footer-links">
+      <a href="#">How underwriting works</a>
+      <a href="#">Submit a deal</a>
+      <a href="#">Contact</a>
+    </div>
+    <p class="site-footer-legal">Mock build — sample data shown for review. Not investment advice. © 2026 Deal Sheet.</p>
+  </div>
+</footer>
+
+</body>
+</html>
