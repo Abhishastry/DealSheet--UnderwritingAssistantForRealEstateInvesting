@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: deal-sheet-postgres
+    environment:
+      POSTGRES_USER: dealsheet
+      POSTGRES_PASSWORD: dealsheet
+      POSTGRES_DB: dealsheet
+    ports:
+      - "5433:5432"
+    volumes:
+      - deal-sheet-pgdata:/var/lib/postgresql/data
+
+volumes:
+  deal-sheet-pgdata:
