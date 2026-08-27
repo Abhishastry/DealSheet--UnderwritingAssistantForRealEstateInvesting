@@ -85,7 +85,7 @@ The field audit gate above is now satisfied for this endpoint. Actual response f
 
 ### Why not Zillow/Redfin directly
 
-- Zillow retired its public API in 2021. The only official route (Bridge Interactive) requires MLS membership or broker credentials, is application-gated with multi-week approval, and starts around $500/month — not viable pre-broker-relationship.
+- Zillow retired its public API in 2021. The only official route (Bridge Interactive) requires MLS membership or broker credentials, is application-gated with multi-week approval, and starts around $500/month — not viable pre-broker-relationship. **Re-confirmed 2026-08-27**, after Section 4a's fixer-tier classifier revealed real value in MLS description text (which RentCast's free tier doesn't provide): $500/mo still isn't viable at this stage, even though the classifier degrades meaningfully without it. Decision stands on cost alone, independent of how useful the data would be — revisit only if the budget picture changes, not if the classifier's degraded accuracy becomes a bigger problem than expected (that's a "find a cheaper data source" problem, not a "reconsider Bridge Interactive" problem).
 - Redfin has no public developer API at all.
 - Third-party "Zillow API" vendors (Zillapi, APIllow, etc.) are repackaged scrapers — buying the data from a vendor doesn't remove the ToS exposure, it just moves who's doing the scraping. Not worth the legal risk once this is a real product with users, even though data collection itself (not underwriting) is the exposed part.
 - An agent auto-browsing Zillow to extract listings hits the same ToS restriction as direct scraping — automation is automation regardless of who/what is doing the browsing.
