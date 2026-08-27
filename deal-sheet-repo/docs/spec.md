@@ -3,7 +3,7 @@
 **Product name:** Deal Sheet
 **Tagline:** Underwriting assistant for Austin investors
 **Status:** Draft v2 — Phase 1 scoping, UI design validated via mock
-**Last updated:** 2026-08-26
+**Last updated:** 2026-08-27
 
 ---
 
@@ -46,6 +46,11 @@ Similarly, **source attribution in the UI shows source *type*, not vendor brand*
 - **Billing is per-request, not per-record.** Listings endpoints (`/listings/sale`, `/listings/rental/long-term`) return up to 500 listings per call, paginated via `limit`/`offset`. One paginated call = one request against the 50/month free quota, regardless of how many listings it returns.
 - **Practical implication:** an initial bulk pull covering Travis/Williamson/Hays counties likely takes only a handful of requests (well within the free 50/month), not one request per property.
 - **Ingestion pattern:** bulk-load once into Supabase, then run scheduled incremental refreshes (weekly or less often) to catch new/changed listings — a delta-check costs far fewer requests than a full re-pull. This is a Phase 3 scheduled job, not a live per-query lookup.
+- **Field audit required before any bulk pull.** We do not yet have a confirmed, field-level map of what `/listings/sale`, `/avm/value`, and the property-records endpoint actually return (photos, description/remarks text, sale/transaction history, comparables shape) — see the open item in Section 9. Before spending real quota on a bulk pull:
+  1. Spend **1–2 calls only** — one small `/listings/sale` call (e.g. `limit=1` or `limit=2`) and, if needed, one `/avm/value` call against a single real address — purely to inspect the actual live response shape.
+  2. Reconcile those real fields against the normalized `Property` schema (Section 3) and update this spec with the confirmed mapping (what maps directly, what's missing, what needs the extraction pipeline instead of a raw field).
+  3. Only after that mapping is written down do we run the larger bulk `/listings/sale` pull and the per-shortlisted-property `/avm/value` calls described above.
+  This audit's 1–2 calls come out of the same 50/month free quota but are spent deliberately, before the real ingestion, not in addition to it.
 - **Coverage caveat:** RentCast targets ~96% residential listing coverage and ~90%+ for land/vacant parcels — very good, not exhaustive.
 - **Value estimate endpoint** (`/avm/value`) returns an ARV-style estimate plus comparable sale listings in one call — efficient for feeding the fix-and-flip module's comp needs.
 - **If free tier is outgrown:** next tier (Foundation) is $74/month for 1,000 requests (~$0.074/call) — a reasonable "value-based" upgrade once real pilot usage data justifies it. Not something to pre-solve before Phase 1.
@@ -275,3 +280,5 @@ Priority: free/cheap to stand up and pilot, but credible enough to share with re
 - [ ] Comp data source for land/recreational module
 - [ ] STR legality lookup by city/county (varies significantly across the Austin metro) — deferred to Phase 5
 - [ ] "Run underwriting" scope: auto-run all applicable strategies for a property, or prompt user to pick one first? (Section 5b)
+- [ ] **RentCast field-level audit — blocks any bulk ingestion.** Confirm actual response fields (not assumed) for `/listings/sale`, `/avm/value`, and the property-records endpoint: photo URLs, listing description/remarks text, sale/transaction history (subject property's own last-sold date/price, separate from comps), and the exact comparables shape (sold price, sold date, distance, correlation). Spend only 1–2 calls to inspect live responses, then reconcile against the `Property` schema (Section 3) and update this spec with the confirmed mapping before running the larger bulk pull described in Section 2. Also resolves whether listing description + photos can feed `condition.notes` / `rehab_estimate` for fix & flip the same way wholesaler emails do, or whether RentCast-sourced deals need a fallback/skip path.
+- [ ] Whether RentCast's property-records/sale-history lookup is a separate billable call from `/avm/value`'s comparables, or bundled — affects the per-property call cost in the Section 2 budget. Confirm during the field audit above.
