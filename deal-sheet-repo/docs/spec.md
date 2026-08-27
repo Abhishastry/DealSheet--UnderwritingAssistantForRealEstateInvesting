@@ -55,6 +55,34 @@ Similarly, **source attribution in the UI shows source *type*, not vendor brand*
 - **Value estimate endpoint** (`/avm/value`) returns an ARV-style estimate plus comparable sale listings in one call — efficient for feeding the fix-and-flip module's comp needs.
 - **If free tier is outgrown:** next tier (Foundation) is $74/month for 1,000 requests (~$0.074/call) — a reasonable "value-based" upgrade once real pilot usage data justifies it. Not something to pre-solve before Phase 1.
 
+#### Confirmed field mapping — `/listings/sale` (audited 2026-08-27, 1 real call, 500 Austin/TX records)
+
+The field audit gate above is now satisfied for this endpoint. Actual response fields, checked across all 500 records (not just one), with two corrections to assumptions made earlier in this doc:
+
+| `Property` schema field | RentCast field | Coverage (of 500) |
+|---|---|---|
+| `address.street` | `addressLine1` (+ `addressLine2` when present — unit/suite) | 500 / 208 |
+| `address.city` | `city` | 500 |
+| `address.county` | `county` (also `countyFips` available) | 500 |
+| `address.zip` | `zipCode` | 500 |
+| `address.lat` / `.lng` | `latitude` / `longitude` | 500 |
+| `source.raw_reference` | `id` (RentCast's listing id; `mlsNumber` also available as a secondary reference) | 500 |
+| `listing.ask_price` | `price` | 500 |
+| `listing.status` | `status` — **values not yet confirmed**; need to check actual strings (e.g. `"Active"`) before mapping to our `listing_status` enum | 500 |
+| `listing.build_year` | `yearBuilt` | 382 |
+| `listing.sqft` | `squareFootage` | 384 |
+| `listing.lot_size` | `lotSize` — **unit not yet confirmed** (assumed sqft, not verified) | 480 |
+| `listing.beds` | `bedrooms` | 399 |
+| `listing.baths` | `bathrooms` | 384 |
+
+**Correction — photos and description/remarks are NOT available on this endpoint.** No `photos`, `images`, `description`, or `remarks`-style field exists anywhere across all 500 records. This directly reverses what was assumed earlier in this doc (that listing description text + photos could feed `condition.notes`/`rehab_estimate` for RentCast-sourced deals the same way wholesaler emails do) — **that assumption was wrong.** RentCast-sourced properties genuinely cannot get a rehab estimate from `/listings/sale` alone; the earlier open question (skip fix & flip for RentCast-only deals, or add a rough $/sqft heuristic) is back open and now confirmed necessary, not hypothetical.
+
+**`history` is listing history, not confirmed sale/closing history.** It's a dict keyed by date, each entry shaped like `{"event": "Sale Listing", "price": ..., "listingType": ..., "listedDate": ..., "removedDate": ..., "daysOnMarket": ...}` — this tracks listing/price-change events (when the property was listed, at what price), not necessarily a closed transaction with a final sale price. Whether RentCast exposes true last-sold price/date (for `verification.tax_history` or ARV context) likely requires the separate property-records endpoint mentioned in Section 9 — still unconfirmed, don't conflate the two.
+
+**Two fields exist on the real response that aren't in our schema at all:** `hoa` (present on 252/500 — matters for buy & hold cash flow) and the MLS/agent fields (`mlsName`, `mlsNumber`, `listingAgent`, `listingOffice`). Not urgent for Phase 1's single fix & flip module, but worth a small schema extension before Phase 2's buy & hold module needs HOA for cash-on-cash math.
+
+**Confirms the schema's "tolerate partial records" design was the right call** (Section 3): `yearBuilt`/`squareFootage`/`bedrooms`/`bathrooms` are each present on only ~77–80% of real records, `hoa` on ~50% — these are genuinely sparse fields in real data, not edge cases.
+
 ### Why not Zillow/Redfin directly
 
 - Zillow retired its public API in 2021. The only official route (Bridge Interactive) requires MLS membership or broker credentials, is application-gated with multi-week approval, and starts around $500/month — not viable pre-broker-relationship.
@@ -280,5 +308,9 @@ Priority: free/cheap to stand up and pilot, but credible enough to share with re
 - [ ] Comp data source for land/recreational module
 - [ ] STR legality lookup by city/county (varies significantly across the Austin metro) — deferred to Phase 5
 - [ ] "Run underwriting" scope: auto-run all applicable strategies for a property, or prompt user to pick one first? (Section 5b)
-- [ ] **RentCast field-level audit — blocks any bulk ingestion.** Confirm actual response fields (not assumed) for `/listings/sale`, `/avm/value`, and the property-records endpoint: photo URLs, listing description/remarks text, sale/transaction history (subject property's own last-sold date/price, separate from comps), and the exact comparables shape (sold price, sold date, distance, correlation). Spend only 1–2 calls to inspect live responses, then reconcile against the `Property` schema (Section 3) and update this spec with the confirmed mapping before running the larger bulk pull described in Section 2. Also resolves whether listing description + photos can feed `condition.notes` / `rehab_estimate` for fix & flip the same way wholesaler emails do, or whether RentCast-sourced deals need a fallback/skip path.
-- [ ] Whether RentCast's property-records/sale-history lookup is a separate billable call from `/avm/value`'s comparables, or bundled — affects the per-property call cost in the Section 2 budget. Confirm during the field audit above.
+- [x] ~~RentCast field-level audit for `/listings/sale`~~ — confirmed 2026-08-27, see Section 2's "Confirmed field mapping" table. **Resolved:** photos/description are NOT available on this endpoint — RentCast-sourced deals cannot get `rehab_estimate` from listing data alone (see next item). **Still open below:** `/avm/value` and the property-records endpoint are not yet audited — only `/listings/sale` has been checked so far.
+- [ ] **RentCast-sourced deals have no rehab estimate.** Confirmed gap, not hypothetical: `/listings/sale` has no photos or description text, so fix & flip's `rehab_estimate` input can't be derived the way it is for wholesaler deals. Decide: skip fix & flip underwriting for RentCast-only properties (show them in All Listings, unprocessed) vs. a rough $/sqft rehab heuristic (flagged low-confidence).
+- [ ] `/avm/value` and the property-records endpoint still need their own field audit (not yet spent) — in particular whether true last-sold price/date (for `verification.tax_history`) is separate from `/listings/sale`'s `history` field (which turned out to be listing/price-change history, not confirmed closing-sale history) or from `/avm/value`'s comparables.
+- [ ] Whether RentCast's property-records/sale-history lookup is a separate billable call from `/avm/value`'s comparables, or bundled — affects the per-property call cost in the Section 2 budget. Confirm during that audit.
+- [ ] `listing.status`'s actual string values (e.g. `"Active"`) and `lotSize`'s unit aren't confirmed yet — needed before writing the real ingestion mapping code, not just the schema-level plan.
+- [ ] Minor schema extension to consider before Phase 2's buy & hold module: `hoa` (present on ~50% of real listings) and MLS/agent reference fields (`mlsNumber`, etc.) exist in RentCast's response but aren't in the `Property` schema yet.
