@@ -68,7 +68,7 @@ The field audit gate above is now satisfied for this endpoint. Actual response f
 | `address.lat` / `.lng` | `latitude` / `longitude` | 500 |
 | `source.raw_reference` | `id` (RentCast's listing id; `mlsNumber` also available as a secondary reference) | 500 |
 | `listing.ask_price` | `price` | 500 |
-| `listing.status` | `status` — **values not yet confirmed**; need to check actual strings (e.g. `"Active"`) before mapping to our `listing_status` enum | 500 |
+| `listing.status` | `status` — confirmed: all 500 real records mapped cleanly to `active`/`pending`/`off_market` via `{"active", "pending", "under contract", "contingent", "off market", "coming soon"}` (case-insensitive) — see `backend/scripts/ingest_rentcast_sample.py` | 500 |
 | `listing.build_year` | `yearBuilt` | 382 |
 | `listing.sqft` | `squareFootage` | 384 |
 | `listing.lot_size` | `lotSize` — **unit not yet confirmed** (assumed sqft, not verified) | 480 |
@@ -312,5 +312,6 @@ Priority: free/cheap to stand up and pilot, but credible enough to share with re
 - [ ] **RentCast-sourced deals have no rehab estimate.** Confirmed gap, not hypothetical: `/listings/sale` has no photos or description text, so fix & flip's `rehab_estimate` input can't be derived the way it is for wholesaler deals. Decide: skip fix & flip underwriting for RentCast-only properties (show them in All Listings, unprocessed) vs. a rough $/sqft rehab heuristic (flagged low-confidence).
 - [ ] `/avm/value` and the property-records endpoint still need their own field audit (not yet spent) — in particular whether true last-sold price/date (for `verification.tax_history`) is separate from `/listings/sale`'s `history` field (which turned out to be listing/price-change history, not confirmed closing-sale history) or from `/avm/value`'s comparables.
 - [ ] Whether RentCast's property-records/sale-history lookup is a separate billable call from `/avm/value`'s comparables, or bundled — affects the per-property call cost in the Section 2 budget. Confirm during that audit.
-- [ ] `listing.status`'s actual string values (e.g. `"Active"`) and `lotSize`'s unit aren't confirmed yet — needed before writing the real ingestion mapping code, not just the schema-level plan.
+- [x] ~~`listing.status`'s actual string values~~ — confirmed 2026-08-27: 500/500 real records mapped cleanly, see Section 2's confirmed mapping table.
+- [ ] `lotSize`'s unit still isn't confirmed (assumed sqft, not verified) — `listing_lot_size_unit` is left null in the real ingested data until this is checked.
 - [ ] Minor schema extension to consider before Phase 2's buy & hold module: `hoa` (present on ~50% of real listings) and MLS/agent reference fields (`mlsNumber`, etc.) exist in RentCast's response but aren't in the `Property` schema yet.
