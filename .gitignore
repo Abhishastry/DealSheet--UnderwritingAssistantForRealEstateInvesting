@@ -10,6 +10,9 @@ venv/
 .env
 !.env.example
 
+# Script output (e.g. raw RentCast API responses) — not source, not for version control
+deal-sheet-repo/backend/scripts/output/
+
 # OS
 .DS_Store
 
