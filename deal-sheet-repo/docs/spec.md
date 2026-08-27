@@ -190,7 +190,20 @@ Land module needs different comp sources than standard resale/rental — flagged
 
 Two qualification signals feed into `deal_reasoning[]` and, for fixer tier, into `condition.rehab_estimate`. **Not yet specified**: the full financial formula chain (target ROI threshold, selling-cost %, holding costs, ARV sourcing, the `recommended_offer` backward-solve) — that's separate, still-open work, tracked in Section 9.
 
-**Fixer tier classification.** Two-step pipeline: an LLM extraction step reads `condition.photos[]` + `condition.notes` (description text) + `listing.build_year`, and outputs structured per-item findings — each of the "core 5" (foundation, plumbing, electric, roof, structure) as `sound` / `damaged` / `unknown`, plus `floor_plan_change_needed`, `pool_or_fence_work`, `remodel_mentioned` booleans. A **deterministic function** (not an LLM judgment call, so the same inputs always yield the same tier) then maps that structured output to one of four tiers:
+**Fixer tier classification.** Two-step pipeline: an LLM extraction step reads whatever's available — `condition.photos[]`, `condition.notes` (description text), `listing.build_year` — and outputs structured per-item findings — each of the "core 5" (foundation, plumbing, electric, roof, structure) as `sound` / `damaged` / `unknown`, plus `floor_plan_change_needed`, `pool_or_fence_work`, `remodel_mentioned` booleans. A **deterministic function** (not an LLM judgment call, so the same inputs always yield the same tier) then maps that structured output to one of four tiers.
+
+**Graceful degradation by input availability** — three cases, each tagged with a different `deal_reasoning` method/confidence so the UI is honest about how strong the basis is:
+
+| Inputs available | `deal_reasoning.method` | Confidence | Basis |
+|---|---|---|---|
+| Photos + description | `photo_analysis` (+ `listing_description` for text mentions) | `likely` | Full pipeline — visual signals (color scheme, popcorn ceiling, countertops) plus text |
+| Description only, no photos | `listing_description` | `likely` | `yearBuilt` (pre-~1994 proxy) + description text alone (does it mention "remodeled"/"updated"/"renovated") |
+| `yearBuilt` only, no photos or description | `listing_description` (a deliberate simplification — `yearBuilt` is part of `listing.*`, not a distinct method; a dedicated method value would need its own enum migration for a fairly marginal case) | `unconfirmed` | Pre-~1994 alone is weak on its own — an old house could be immaculately renovated — but still nudges toward light-fixer as a low-confidence signal rather than nothing |
+| Nothing (no photos, no description, no `yearBuilt`) | — | — | No fixer tier assigned at all |
+
+This directly changes what the RentCast dataset can do: of the 500 Austin listings already ingested, the ~76% with `yearBuilt` (confirmed in Section 2's field audit) get a weak, `unconfirmed`-confidence fixer-tier guess; only the remaining ~24% with no `yearBuilt` at all get nothing. Not the full `no_condition_data` dead-end stated in the previous draft of this section — a real, if weak, signal for most of them.
+
+The tier mapping itself:
 
 | Tier | Core 5 rule | Other signals |
 |---|---|---|
@@ -199,7 +212,7 @@ Two qualification signals feed into `deal_reasoning[]` and, for fixer tier, into
 | **Full/deep fixer** | ≤2 of 5 `sound` — **and any `unknown` core-5 item counts as `damaged` for this rule, not as a pass.** We don't yet distinguish "confirmed bad" from "no info either way"; both are treated conservatively as deep-fixer risk rather than under-flagging a property we simply lack data on. | Evidence of serious damage (flood, fire) to multiple core items |
 | **Full build** | Foundation gone, or no structure exists | Ground-up build, not a rehab |
 
-**Confirmed limitation**: this classifier needs photos and description text. RentCast's `/listings/sale` has neither (confirmed via the field audit, Section 2) — so it can only run on wholesaler-sourced deals for now. RentCast-sourced properties (already flagged `no_condition_data`) get no fixer tier and no `rehab_estimate` from this path until that data gap is resolved some other way.
+**Remaining limitation**: RentCast's `/listings/sale` has no photos or description (confirmed via the field audit, Section 2), so RentCast-sourced deals only ever reach the weakest (`yearBuilt`-only, `unconfirmed`) tier of the table above — never the stronger photo/description-based classification wholesaler deals can get. The `rehab_estimate` derived from a `yearBuilt`-only tier should itself carry that same low confidence when it feeds the financial formula chain (Section 9).
 
 **Connects to the financial formulas**: once a tier is assigned, it can drive a rough `condition.rehab_estimate` via a $/sqft multiplier per tier (e.g. light/medium/deep/full-build each get their own rate × `listing.sqft`) for deals where the wholesaler didn't give a precise number — closing the loop back to what the fix & flip module's `recommended_offer` math needs. Exact $/sqft rates per tier: not yet set — needs real Austin-market rehab cost data, tracked in Section 9.
 
