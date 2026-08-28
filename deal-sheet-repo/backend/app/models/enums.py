@@ -77,3 +77,12 @@ class UnderwritingStrategy(str, enum.Enum):
 class LotSizeUnit(str, enum.Enum):
     SQFT = "sqft"
     ACRES = "acres"
+
+
+class FixerTier(str, enum.Enum):
+    """spec.md Section 4a's four-tier fixer classification."""
+
+    LIGHT = "light_fixer"
+    MEDIUM = "medium_fixer"
+    DEEP = "deep_fixer"
+    FULL_BUILD = "full_build"

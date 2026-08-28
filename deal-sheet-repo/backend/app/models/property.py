@@ -16,7 +16,15 @@ from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin, UpdatedAtMixin, UUIDPKMixin
-from app.models.enums import ListingStatus, LotSizeUnit, Persona, SourceType, pg_enum
+from app.models.enums import (
+    DealReasoningConfidence,
+    FixerTier,
+    ListingStatus,
+    LotSizeUnit,
+    Persona,
+    SourceType,
+    pg_enum,
+)
 
 if TYPE_CHECKING:
     from app.models.deal_reasoning import DealReasoning
@@ -58,6 +66,21 @@ class Property(UUIDPKMixin, TimestampMixin, UpdatedAtMixin, Base):
     condition_rehab_estimate: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 2))
     condition_photos: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False, server_default="{}")
     condition_doc_links: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False, server_default="{}")
+
+    # spec.md Section 4a. Confidence varies by which fallback tier produced the
+    # classification (photos+description / description-only / yearBuilt-only) --
+    # see that section's degradation table. rehab_estimate above stays separate
+    # and unset until the $/sqft-per-tier rates are decided (Section 9).
+    fixer_tier: Mapped[Optional[FixerTier]] = mapped_column(pg_enum(FixerTier, "fixer_tier"))
+    fixer_tier_confidence: Mapped[Optional[DealReasoningConfidence]] = mapped_column(
+        pg_enum(DealReasoningConfidence, "deal_reasoning_confidence")
+    )
+
+    # spec.md Section 4a's neighborhood pricing signal -- % below the average
+    # ask price of comparable properties within the 0.4mi radius. Positive =
+    # below average (cheaper), negative = above. Structured here (not just
+    # narrative in deal_reasoning) so it's usable for ranking/badges directly.
+    pct_below_neighborhood_avg: Mapped[Optional[Decimal]] = mapped_column(Numeric(6, 2))
 
     # -- verification --
     verification_county_record_match: Mapped[bool] = mapped_column(
