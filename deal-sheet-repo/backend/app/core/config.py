@@ -13,6 +13,7 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+psycopg://dealsheet:dealsheet@localhost:5433/dealsheet"
     rentcast_api_key: str | None = None
+    anthropic_api_key: str | None = None
 
 
 settings = Settings()
