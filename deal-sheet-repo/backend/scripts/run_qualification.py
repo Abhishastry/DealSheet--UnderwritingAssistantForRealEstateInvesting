@@ -73,24 +73,40 @@ def main() -> None:
     failed = 0
     total_entries = 0
 
+    MAX_ATTEMPTS = 2  # pool_pre_ping (app/core/db.py) should catch stale connections before
+    # this is even needed -- this is defense-in-depth for a genuine blip during an active query.
+    # A retry re-calls the LLM (re-spends), so this stays small, not a long backoff loop.
+
     for i, prop_id in enumerate(pending_ids, start=1):
-        session = SessionLocal()
-        try:
-            prop = session.get(Property, prop_id)
-            if prop is None:
-                continue
-            entry_count = run_qualification(session, client, prop)
-            session.commit()
-            succeeded += 1
-            total_entries += entry_count
-            tier = prop.fixer_tier.value if prop.fixer_tier else "none"
-            print(f"[{i}/{len(pending_ids)}] {prop.address_street}: tier={tier}, {entry_count} reasoning entries")
-        except Exception as exc:  # noqa: BLE001 -- one bad property shouldn't kill the whole batch
-            session.rollback()
+        last_error: Exception | None = None
+        done = False
+
+        for attempt in range(1, MAX_ATTEMPTS + 1):
+            session = SessionLocal()
+            try:
+                prop = session.get(Property, prop_id)
+                if prop is None:
+                    done = True
+                    break
+                entry_count = run_qualification(session, client, prop)
+                session.commit()
+                succeeded += 1
+                total_entries += entry_count
+                tier = prop.fixer_tier.value if prop.fixer_tier else "none"
+                print(f"[{i}/{len(pending_ids)}] {prop.address_street}: tier={tier}, {entry_count} reasoning entries")
+                done = True
+                break
+            except Exception as exc:  # noqa: BLE001 -- one bad property shouldn't kill the whole batch
+                session.rollback()
+                last_error = exc
+                if attempt < MAX_ATTEMPTS:
+                    print(f"[{i}/{len(pending_ids)}] attempt {attempt} failed ({exc}); retrying...", file=sys.stderr)
+            finally:
+                session.close()
+
+        if not done:
             failed += 1
-            print(f"[{i}/{len(pending_ids)}] FAILED (property {prop_id}): {exc}", file=sys.stderr)
-        finally:
-            session.close()
+            print(f"[{i}/{len(pending_ids)}] FAILED (property {prop_id}): {last_error}", file=sys.stderr)
 
     print(f"\nDone. Succeeded: {succeeded}, Failed: {failed}, Total deal_reasoning entries written: {total_entries}")
 
