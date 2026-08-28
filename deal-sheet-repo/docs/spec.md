@@ -152,7 +152,7 @@ Property {
   ]  // populated when a real negotiating price point exists — see Section 5 (negotiation scale)
   deal_reasoning: [
     {
-      method: "wholesaler_conversation" | "listing_description" | "photo_analysis" | "neighborhood_analysis"
+      method: "wholesaler_conversation" | "listing_description" | "photo_analysis" | "neighborhood_analysis" | "general_analysis"
       confidence: "verified" | "likely" | "unconfirmed"
       text  // plain-language explanation of the specific opportunity mechanism
     }
@@ -189,6 +189,8 @@ Land module needs different comp sources than standard resale/rental — flagged
 ### 4a. Fix & Flip — Property Qualification (Phase 1, in progress)
 
 Two qualification signals feed into `deal_reasoning[]` and, for fixer tier, into `condition.rehab_estimate`. **Not yet specified**: the full financial formula chain (target ROI threshold, selling-cost %, holding costs, ARV sourcing, the `recommended_offer` backward-solve) — that's separate, still-open work, tracked in Section 9.
+
+**`deal_reasoning[]` generation is open-ended, not limited to the two signals below.** The fixer-tier classifier and neighborhood pricing signal are *guaranteed, prioritized* content — surfaced first, via `sort_order` (low values = higher priority) — but they are not the only things an LLM pass over a property's available data (structured facts, comps, `features`, `taxAssessments`, description/photos when present) is allowed to say. If something else genuinely stands out — an unusually large lot, a flood-zone flag, a notable comp pattern — it can be surfaced too, tagged `method: "general_analysis"` when it doesn't cleanly belong to one of the four channel-specific methods (`wholesaler_conversation` / `listing_description` / `photo_analysis` / `neighborhood_analysis`). **Quality bar**: every entry, defined-criteria or open-ended, must clearly explain *why* it matters, not just state a fact — "large lot" alone isn't a `deal_reasoning` entry; "lot is 40% larger than the neighborhood average, meaning subdivision potential worth investigating" is.
 
 **Fixer tier classification.** Two-step pipeline: an LLM extraction step reads whatever's available — `condition.photos[]`, `condition.notes` (description text), `listing.build_year` — and outputs structured per-item findings — each of the "core 5" (foundation, plumbing, electric, roof, structure) as `sound` / `damaged` / `unknown`, plus `floor_plan_change_needed`, `pool_or_fence_work`, `remodel_mentioned` booleans. A **deterministic function** (not an LLM judgment call, so the same inputs always yield the same tier) then maps that structured output to one of four tiers.
 

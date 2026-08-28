@@ -48,6 +48,10 @@ class DealReasoningMethod(str, enum.Enum):
     LISTING_DESCRIPTION = "listing_description"
     PHOTO_ANALYSIS = "photo_analysis"
     NEIGHBORHOOD_ANALYSIS = "neighborhood_analysis"
+    # Open-ended observations that don't cleanly belong to one specific channel
+    # above -- e.g. noticing something from combining structured facts/comps
+    # rather than one source. See spec.md Section 4a.
+    GENERAL_ANALYSIS = "general_analysis"
 
 
 class DealReasoningConfidence(str, enum.Enum):
