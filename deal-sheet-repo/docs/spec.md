@@ -52,7 +52,7 @@ Similarly, **source attribution in the UI shows source *type*, not vendor brand*
   3. Only after that mapping is written down do we run any further bulk pulls or the per-shortlisted-property `/avm/value` calls described above.
   This audit's 1–2 calls come out of the same 50/month free quota but are spent deliberately, before the larger ingestion, not in addition to it.
 - **Coverage caveat:** RentCast targets ~96% residential listing coverage and ~90%+ for land/vacant parcels — very good, not exhaustive.
-- **Value estimate endpoint** (`/avm/value`) returns an ARV-style estimate plus comparable sale listings in one call — efficient for feeding the fix-and-flip module's comp needs.
+- **Value estimate endpoint** (`/avm/value`) returns an ARV-style estimate plus comparable sale listings in one call — efficient for feeding the fix-and-flip module's comp needs. **Audited 2026-08-27** (1 real call): response has 7 top-level fields (`price`, `priceRangeLow/High`, `latitude`, `longitude`, `subjectProperty`, `comparables`) — **no description/remarks anywhere**, including nested in `subjectProperty`/`comparables`. Combined with `/listings/sale` also lacking it (Section 2's earlier audit), this looks like an MLS redistribution-licensing restriction that applies across RentCast's endpoints, not a free-tier paywall — still unconfirmed, but the pattern points that way.
 - **If free tier is outgrown:** next tier (Foundation) is $74/month for 1,000 requests (~$0.074/call) — a reasonable "value-based" upgrade once real pilot usage data justifies it. Not something to pre-solve before Phase 1.
 
 #### Confirmed field mapping — `/listings/sale` (audited 2026-08-27, 1 real call, 500 Austin/TX records)
