@@ -116,8 +116,14 @@ def main() -> None:
     out_path.write_text(json.dumps(data, indent=2))
     print(f"\nSaved raw response to {out_path}")
 
-    print(f"\nTop-level keys ({len(data)} total):")
-    for key in sorted(data.keys()):
+    # /v1/properties returns a list (possibly multiple matches for one address);
+    # /avm/value returns a single object. Handle both rather than assuming a dict.
+    record = data[0] if isinstance(data, list) and data else (data if isinstance(data, dict) else {})
+    if isinstance(data, list):
+        print(f"\nResponse is a LIST with {len(data)} item(s) -- showing the first.")
+
+    print(f"\nTop-level keys ({len(record)} total):")
+    for key in sorted(record.keys()):
         print(f"  - {key}")
 
     found: set[str] = set()
