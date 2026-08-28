@@ -193,7 +193,14 @@ def run_qualification(session: Session, client: anthropic.Anthropic, prop: Prope
 
         response = client.messages.parse(
             model=MODEL,
-            max_tokens=4000,
+            max_tokens=8000,
+            # Classification + generation, not deep reasoning -- medium effort is
+            # the right cost/quality tradeoff for this kind of high-volume task
+            # (see the claude-api skill's effort guidance). Thinking is on by
+            # default on Sonnet 5 even without requesting it, and it shares the
+            # same max_tokens budget as the output -- too tight a ceiling here
+            # is what caused the truncated-JSON failure on the first run.
+            output_config={"effort": "medium"},
             system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
             messages=[{"role": "user", "content": user_content}],
             output_format=FullQualificationResult,
@@ -209,7 +216,8 @@ def run_qualification(session: Session, client: anthropic.Anthropic, prop: Prope
         user_content = [{"type": "text", "text": f"{facts}\n\n{covered_note}"}]
         response = client.messages.parse(
             model=MODEL,
-            max_tokens=2000,
+            max_tokens=8000,
+            output_config={"effort": "medium"},
             system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
             messages=[{"role": "user", "content": user_content}],
             output_format=OpenEndedReasoning,
