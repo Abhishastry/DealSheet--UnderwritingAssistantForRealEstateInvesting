@@ -168,7 +168,7 @@ def render(session: Session, limit: int | None) -> str:
     if limit:
         qualified = qualified[:limit]
 
-    with open(MOCK_PATH) as f:
+    with open(MOCK_PATH, encoding="utf-8") as f:
         mock = f.read()
 
     style_close = mock.index("</style>")
@@ -214,7 +214,7 @@ def main() -> None:
     finally:
         session.close()
 
-    with open(args.out, "w") as f:
+    with open(args.out, "w", encoding="utf-8") as f:
         f.write(html)
     print(f"Wrote {args.out}")
 

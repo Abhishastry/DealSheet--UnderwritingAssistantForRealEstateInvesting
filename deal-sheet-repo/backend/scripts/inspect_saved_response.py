@@ -29,7 +29,7 @@ def main() -> None:
         print("Usage: python scripts/inspect_saved_response.py <path-to-saved-json>")
         sys.exit(1)
 
-    data = json.loads(open(sys.argv[1]).read())
+    data = json.loads(open(sys.argv[1], encoding="utf-8").read())
 
     if isinstance(data, list):
         print(f"Response is a LIST with {len(data)} item(s).")

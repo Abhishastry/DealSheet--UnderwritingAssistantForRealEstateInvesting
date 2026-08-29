@@ -104,7 +104,7 @@ def main() -> None:
         print("Usage: python scripts/ingest_rentcast_sample.py <path-to-saved-json>")
         sys.exit(1)
 
-    data = json.loads(open(sys.argv[1]).read())
+    data = json.loads(open(sys.argv[1], encoding="utf-8").read())
     listings = data if isinstance(data, list) else data.get("listings", data)
 
     unmapped_statuses: Counter = Counter()

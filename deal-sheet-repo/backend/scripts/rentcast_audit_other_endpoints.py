@@ -66,7 +66,7 @@ def default_address() -> str:
             file=sys.stderr,
         )
         sys.exit(1)
-    data = json.loads(sample_path.read_text())
+    data = json.loads(sample_path.read_text(encoding="utf-8"))
     listings = data if isinstance(data, list) else data.get("listings", data)
     return listings[0]["formattedAddress"]
 
@@ -113,7 +113,7 @@ def main() -> None:
     out_dir = Path("scripts/output")
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / f"rentcast_{args.endpoint}_audit.json"
-    out_path.write_text(json.dumps(data, indent=2))
+    out_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
     print(f"\nSaved raw response to {out_path}")
 
     # /v1/properties returns a list (possibly multiple matches for one address);

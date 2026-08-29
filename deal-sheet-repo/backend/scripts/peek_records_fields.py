@@ -15,7 +15,7 @@ def main() -> None:
         print("Usage: python scripts/peek_records_fields.py <path-to-saved-json>")
         sys.exit(1)
 
-    data = json.loads(open(sys.argv[1]).read())
+    data = json.loads(open(sys.argv[1], encoding="utf-8").read())
     records = data if isinstance(data, list) else data.get("properties", data)
 
     print("=== Sample 'features' contents (first 3 non-empty) ===")

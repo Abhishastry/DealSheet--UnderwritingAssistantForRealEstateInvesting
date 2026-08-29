@@ -81,7 +81,7 @@ def main() -> None:
     out_dir = Path("scripts/output")
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / f"rentcast_records_{args.city}_{args.state}.json"
-    out_path.write_text(json.dumps(data, indent=2))
+    out_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
     count = len(records) if isinstance(records, list) else "unknown (unexpected shape)"
     print(f"\nSaved raw response to {out_path}")
