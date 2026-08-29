@@ -97,12 +97,18 @@ def main() -> None:
                 done = True
                 break
             except Exception as exc:  # noqa: BLE001 -- one bad property shouldn't kill the whole batch
-                session.rollback()
+                try:
+                    session.rollback()
+                except Exception:  # noqa: BLE001 -- the connection may already be dead; we're
+                    pass          # discarding this session either way, rollback succeeding isn't required
                 last_error = exc
                 if attempt < MAX_ATTEMPTS:
                     print(f"[{i}/{len(pending_ids)}] attempt {attempt} failed ({exc}); retrying...", file=sys.stderr)
             finally:
-                session.close()
+                try:
+                    session.close()
+                except Exception:  # noqa: BLE001 -- same reasoning as the rollback guard above
+                    pass
 
         if not done:
             failed += 1
